@@ -1,0 +1,9 @@
+V: E,A,T,B,F
+SIGMA: +,*,id,(,),#
+S: E
+P:
+	E -> T A,
+	A -> + T A | #,
+	T -> F B,
+	B -> * F A | #,
+	F -> ( E ) | id
