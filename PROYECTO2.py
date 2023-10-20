@@ -10,15 +10,11 @@ El programa toma como entrada un archivo con una CFG y el proposito es convertir
 
 '''
 
-
 import re
 import sys
 from itertools import product
 
-import re
-
-class CFG:
-    
+class CFG:    
     # Variables - Símbolos No Terminales
     _V = []
     # Alfabeto - Símbolos Terminales
@@ -43,8 +39,7 @@ class CFG:
             lineas = f.readlines()
         g = ''.join([re.sub(" |\n|\t", "", x) for x in lineas])
         if not re.search('V:' + self._V_set + 'SIGMA:' + self._SIGMA_set + 'S:' + self._S_set + 'P:' + self._P_set, g):
-            raise ImportError('Error: definición incorrecta de la gramática. Define tu gramática como:'
-                              '\nV:[V|V_0],...\nSIGMA:[s|#],...\nS:s0\nP:V1->s1V|#,V2->s1|s2|...')
+            raise ImportError('Error: definición incorrecta de la gramática.')
         v = re.search('V:(.*)SIGMA:', g).group(1)
         sigma = re.search('SIGMA:(.*)S:', g).group(1)
         s = re.search('S:(.*)P:', g).group(1)
@@ -148,16 +143,18 @@ class CFG:
         return _str.replace('\\', '')
 
 
-class GenericNF(object):
-    """ Generic Normal Form Class """
-
-    def isInNF(self, CFG):
+class Simplificacion(object):
+    """ Simplificación de gramática """
+    #Verificar si una gramática está en una forma normal
+    def _FN(self, CFG):
         pass
 
-    def convertToNF(self, CFG):
+    #Convertir una gramática a una forma normal
+    def _convertirFN(self, CFG):
         pass
 
-    def _loadCFG(self, cfg):
+    #Cargar una gramática CFG en la instancia de la clase
+    def _cargarCFG(self, cfg):
         self._V = [x for x in cfg._V]
         self._SIGMA = [x for x in cfg._SIGMA]
         self._S = cfg._S
@@ -170,17 +167,17 @@ class GenericNF(object):
                     _p[i] = s
                 self._P[v].append(_p)
 
-    def simplifyCFG(self, cfg):
-        """ Base Normal Form : epsilon-free Grammar """
-        self._loadCFG(cfg)
-        self._removeNullProductins()
-        self._removeUnitProductins()
-        self._reduceCFG()
-        
-        
-        return CFG().create(self._V, self._SIGMA, self._S, self._P)
+    #Simplificar una gramática CFG
+    def simplificarCFG(self, cfg):
+        self._cargarCFG(cfg)
+        self._produccionesEpsilon()
+        self._produccionesUnarias()
+        self._reducirCFG()
+                
+        return CFG().crear(self._V, self._SIGMA, self._S, self._P)
 
-    def _removeNullProductins(self):
+    #Eliminar producciones epsilon de una gramática CFG
+    def _produccionesEpsilon(self):
         if re.escape('#') not in self._SIGMA:
             return
         self._SIGMA = [x for x in self._SIGMA if x is not re.escape('#')]
@@ -190,8 +187,8 @@ class GenericNF(object):
                 _P[v] = []
             for p in self._P[v]:
                 if len(p) == 1 and p[0] == re.escape('#'):
-                    newPs = self._createProductions(v)
-                    for _v, _p in newPs.items():
+                    nuevasProducciones = self._crearProducciones(v)
+                    for _v, _p in nuevasProducciones.items():
                         if _v not in _P.keys():
                             _P[_v] = []
                         _P[_v] = [x for x in _p if x not in _P[_v]] + _P[_v]
@@ -199,20 +196,20 @@ class GenericNF(object):
                     _P[v] = [x for x in [p] if x not in _P[v]] + _P[v]
         self._P = _P
 
-    def _createProductions(self, s):
+    #Crear producciones al eliminar producciones epsilon
+    def _crearProducciones(self, s):
         _P = {}
         for v in self._V:
             for p in self._P[v]:
                 if s in p.values():
                     if len(p.values()) > 1:
-                        # generate all possible combination
+                        # Generar todas las combinaciones posibles
                         i = list(p.values()).count(s)
                         cases = [[x for x in l] for l in list(product([True, False], repeat=i))]
-                        # [Treu]*i means that all ss do not change eg. s=B, V->aBa remain aBa
                         cases = [x for x in cases if x != [True] * i]
                         for case in cases:
-                            k = 0  # production length
-                            _i = 0  # number of s appeared
+                            k = 0  # longitud de la producción
+                            _i = 0  # número de 's' que aparecen
                             c = {}
                             for key, val in p.items():
                                 if val != s:
@@ -228,44 +225,46 @@ class GenericNF(object):
                                 _P[v] = []
                             _P[v] = [x for x in [c] if x not in _P[v] and x != {}] + _P[v]
                     else:
-                        # this mean that v -> p is equl to v -> #
-                        newPs = self._createProductions(v)
-                        for _v, _p in newPs.items():
+                        nuevasProducciones = self._crearProducciones(v)
+                        for _v, _p in nuevasProducciones.items():
                             if _v not in _P.keys():
                                 _P[_v] = []
                             _P[_v] = [x for x in _p if x not in _P[_v]] + _P[_v]
         return _P
 
-    def _removeUnitProductins(self):
+    #Eliminar producciones unitarias de una gramática CFG
+    def _produccionesUnarias(self):
         P = {}
         for v in self._V:
             P[v] = []
             for p in self._P[v]:
                 if len(p) == 1 and p[0] in self._V:
-                    newPs = self._findTerminals(v, p[0])
-                    P[v] = [x for x in newPs if x not in P[v]] + P[v]
+                    nuevasProducciones = self._encontrarTerminales(v, p[0])
+                    P[v] = [x for x in nuevasProducciones if x not in P[v]] + P[v]
                 else:
                     P[v] = [x for x in [p] if x not in P[v]] + P[v]
         self._P = P
-        self._reduceCFG()
+        self._reducirCFG()
 
-    def _findTerminals(self, parent, son):
+    #Encontrar producciones terminales de una gramática CFG
+    def _encontrarTerminales(self, parent, son):
         T = []
         for p in self._P[son]:
             if len(p) > 1 or p[0] in self._SIGMA:
                 T = [x for x in [p] if x not in T] + T
             elif p[0] != parent:
-                T = [x for x in self._findTerminals(parent, p[0]) if x not in T] + T
+                T = [x for x in self._encontrarTerminales(parent, p[0]) if x not in T] + T
         return T
 
-    def _reduceCFG(self):
+    #Reducir la gramática eliminando símbolos no alcanzables
+    def _reducirCFG(self):
         W = {}
-        W[0] = self._updateW(self._SIGMA)
+        W[0] = self._actW(self._SIGMA)
         i = 1
-        W[i] = self._updateW(W[i - 1], W[i - 1])
+        W[i] = self._actW(W[i - 1], W[i - 1])
         while (W[i] != W[i - 1]):
             i += 1
-            W[i] = self._updateW(W[i - 1], W[i - 1])
+            W[i] = self._actW(W[i - 1], W[i - 1])
         V = W[i]
         _P = {}
         for v in V:
@@ -277,14 +276,15 @@ class GenericNF(object):
         Y = {}
         Y[0] = [self._S]
         j = 1
-        Y[1] = self._propagateProduction(Y[0])
+        Y[1] = self._propagarProduccion(Y[0])
         while (Y[j] != Y[j - 1]):
             j += 1
-            Y[j] = self._propagateProduction(Y[j - 1], Y[j - 2])
+            Y[j] = self._propagarProduccion(Y[j - 1], Y[j - 2])
         self._V = [x for x in V if x in Y[j]]
         self._SIGMA = [x for x in self._SIGMA if x in Y[j]]
 
-    def _propagateProduction(self, Y, _prev=None):
+    #Propagar producciones de una gramática CFG y encontrar símbolos alcanzables
+    def _propagarProduccion(self, Y, _prev=None):
         _y = [x for x in Y]
         y = [x for x in Y if x not in self._SIGMA]
         if _prev is not None:
@@ -296,7 +296,8 @@ class GenericNF(object):
                         _y.append(s)
         return _y
 
-    def _updateW(self, SET, _prev=None):
+    #Actualizar símbolos alcanzables de una gramática CFG
+    def _actW(self, SET, _prev=None):
         if _prev is not None:
             W = [x for x in _prev]
         else:
@@ -308,12 +309,14 @@ class GenericNF(object):
                         W.append(v)
         return W
 
-class ChomskyNF(GenericNF):
-    """ Chomsky Normal Form Class """
-    _gen_symbols = {}
 
-    def isInNF(self, cfg):
-        """ X -> a | YZ  """
+class ChomskyFN(Simplificacion):
+    """ Clase de Forma Normal de Chomsky """
+
+    _simbolos_generados = {}
+
+    #Verifica si la gramática está en Forma Normal de Chomsky
+    def FNC(self, cfg):
         if re.escape('#') in cfg._SIGMA:
             return False
         else:
@@ -327,38 +330,38 @@ class ChomskyNF(GenericNF):
                         return False
         return True
 
+    #Convertir una gramática a Forma Normal de Chomsky
     def convertToNF(self, cfg):
-        self._loadCFG(cfg)
-        self._reduceCFG()
-        self._removeNullProductins()
-        self._removeUnitProductins()
-        self._splitNonTerminalSequences()
-        self.replaceTerminals()
-        
-        
+        self._cargarCFG(cfg)
+        self._reducirCFG()
+        self._produccionesEpsilon()
+        self._produccionesUnarias()
+        self._dividirSecuenciasNT()
+        self._remplazarTerminales()
         
         return CFG().crear(self._V, self._SIGMA, self._S, self._P)
 
-
-    def _createVariable(self, S):
+    #Crea una nueva variable única
+    def _crearVariable(self, S):
         i = 0
         while (S + '\\_' + str(i) in self._V):
             i += 1
         return S + '\\_' + str(i)
 
-    def _splitNonTerminalSequences(self):
+    #Divide las secuencias de símbolos no terminales
+    def _dividirSecuenciasNT(self):
         _P = {}
-        _wrongPs = {}
+        _produccionErronea = {}
         for v, Ps in self._P.items():
             _P[v] = []
             for p in Ps:
                 if len(p) > 2 and len([x for x in p.values() if x in self._V]) > 0:
-                    if v not in _wrongPs.keys():
-                        _wrongPs[v] = []
-                    _wrongPs[v].append(p)
+                    if v not in _produccionErronea.keys():
+                        _produccionErronea[v] = []
+                    _produccionErronea[v].append(p)
                 else:
                     _P[v].append(p)
-        for v, Ps in _wrongPs.items():
+        for v, Ps in _produccionErronea.items():
             if v not in _P.keys():
                 _P[_v[j]] = []
             for p in Ps:
@@ -366,7 +369,7 @@ class ChomskyNF(GenericNF):
                 _v = {0: v}
                 for j in range(1, n):
                     if j != n - 1:
-                        _v[j] = self._createVariable('X')
+                        _v[j] = self._crearVariable('X')
                         self._V.append(_v[j])
                     else:
                         _v[j] = p[j]
@@ -375,7 +378,8 @@ class ChomskyNF(GenericNF):
                     _P[_v[j - 1]].append({0: p[j - 1], 1: _v[j]})
         self._P = _P
     
-    def replaceTerminals(self):
+    #Reemplaza los símbolos terminales en las producciones
+    def _remplazarTerminales(self):
         _P = {}
         nuevasProds = {}
         for v, Ps in self._P.items():
@@ -385,7 +389,7 @@ class ChomskyNF(GenericNF):
                 for j, s in p.items():
                     if s in self._SIGMA:
                         if s not in nuevasProds.keys():
-                            nuevasProds[s] = self._createVariable(s)
+                            nuevasProds[s] = self._crearVariable(s)
                             self._V.append(nuevasProds[s])
                             _P[nuevasProds[s]] = [{0: s}]
                         _p[j] = nuevasProds[s]
@@ -395,22 +399,21 @@ class ChomskyNF(GenericNF):
         self._P = _P
 
 if __name__ == "__main__":
-    print("Chomsky Normal Form")
+    print("Forma Normal de Chomsky")
     G = CFG()
 
-    print('\nTest : check normal form (gramatica.txt)')
     G.cargarDesdeArchivo('gramatica.txt')
-    result = ChomskyNF().isInNF(G)
+    resultado = ChomskyFN().FNC(G)
     print(G)
 
-    if result:
-        print('\ngrammar is in Chomsky normal form')
+    if resultado:
+        print('\nLa gramática está en Forma Normal de Chomsky')
     else:
-        print('\ngrammar is not in Chomsky normal form\n')
-        g = ChomskyNF().convertToNF(G)
+        print('\nLa gramática no está en Forma Normal de Chomsky\n')
+        g = ChomskyFN().convertToNF(G)
         print(g)
 
-        if ChomskyNF().isInNF(g):
-            print('\ngrammar is now in Chomsky normal form')
+        if ChomskyFN().FNC(g):
+            print('\nLa gramática ahora está en Forma Normal de Chomsky')
         else:
-            print('\ngrammar is still not in Chomsky normal form')
+            print('\nLa gramática sigue sin estar en Forma Normal de Chomsky')
