@@ -15,107 +15,118 @@ import re
 import sys
 from itertools import product
 
+import re
+
 class CFG:
-    """ Context Free Gramamr Class """
-    # Variables - Non Terminal Symbols
+    
+    # Variables - Símbolos No Terminales
     _V = []
-    # Alphabet - Terminal Symbols
+    # Alfabeto - Símbolos Terminales
     _SIGMA = []
-    # Start Symbol
+    # Símbolo de Inicio
     _S = None
-    # Productions
+    # Producciones
     _P = []
-    # Accepted Variables - Non Terminal Symbols - RegExp
+    # Variables Aceptadas - Símbolos No Terminales - Expresión Regular
     _V_set = '[A-Z](_[0-9]*)?(,[A-Z](_[0-9]*)?)*'
-    # Accepted Alphabet - Terminal Symbols - RegExp
+    # Alfabeto Aceptado - Símbolos Terminales - Expresión Regular
     _SIGMA_set = '.*(,.*)*'
-    # Accepted Start Symbol - RegExp
+    # Símbolo de Inicio Aceptado - Expresión Regular
     _S_set = '[A-Z](_[0-9]*)?'
-    # Accepted Productions - RegExp
+    # Producciones Aceptadas - Expresión Regular
     _P_set = '([A-Z](_[0-9]*)?->.*(|.*)*(,[A-Z](_[0-9]*)?->.*(|.*)*)*)'
 
-    def loadFromFile(self, txtFile):
-        """ Costructor From File """
-        with open(txtFile) as f:
-            lines = f.readlines()
-        g = ''.join([re.sub(" |\n|\t", "", x) for x in lines])
+
+    """ Constructor Desde Archivo: Carga una CFG desde un archivo de texto """
+    def cargarDesdeArchivo(self, archivoTexto):
+        with open(archivoTexto) as f:
+            lineas = f.readlines()
+        g = ''.join([re.sub(" |\n|\t", "", x) for x in lineas])
         if not re.search('V:' + self._V_set + 'SIGMA:' + self._SIGMA_set + 'S:' + self._S_set + 'P:' + self._P_set, g):
-            raise ImportError('Error : grammar bad definition, define your grammar as :'
+            raise ImportError('Error: definición incorrecta de la gramática. Define tu gramática como:'
                               '\nV:[V|V_0],...\nSIGMA:[s|#],...\nS:s0\nP:V1->s1V|#,V2->s1|s2|...')
         v = re.search('V:(.*)SIGMA:', g).group(1)
         sigma = re.search('SIGMA:(.*)S:', g).group(1)
         s = re.search('S:(.*)P:', g).group(1)
         p = re.search('P:(.*)', g).group(1)
-        self.load(v, sigma, s, p)
+        self.cargar(v, sigma, s, p)
 
-    def load(self, v, sigma, s, p):
-        """ Costructor From Strings """
+
+    """ Constructor Desde Cadenas: Carga una CFG desde cadenas de texto """
+    def cargar(self, v, sigma, s, p):
         self._V = [re.escape(x) for x in re.split(',', v.replace(" ", ""))]
         self._SIGMA = [re.escape(x) for x in re.split(',', sigma.replace(" ", ""))]
         if [x for x in self._V if x in self._SIGMA]:
-            sys.exit('Error : V intersection SIGMA is not empty')
+            sys.exit('Error: la intersección entre V y SIGMA no está vacía')
         s = re.escape(s.replace(" ", ""))
         if s in self._V:
             self._S = s
         else:
-            sys.exit('Error : start symbol is not in V')
+            sys.exit('Error: el símbolo de inicio no está en V')
         p = p.replace(" ", "")
         self._P = self._parsProductions(p)
 
+
+    """ Constructor de Producciones: Analiza las producciones y las almacena en una estructura de datos """
     def _parsProductions(self, p):
-        """ Productions Builder """
         P = {}
         v = []
-        self.symbols = self._V + self._SIGMA
-        rows = re.split(',', p)
-        for row in rows:
-            item = re.split('->', row)
-            left = re.escape(item[0])
-            if (left in self._V):
-                v.append(left)
+        self.simbolos = self._V + self._SIGMA
+        filas = re.split(',', p)
+        for fila in filas:
+            item = re.split('->', fila)
+            izquierda = re.escape(item[0])
+            if (izquierda in self._V):
+                v.append(izquierda)
 
-                if left not in P:
-                    P[left] = []
-                rules = re.split('\|', item[1])
-                for rule in rules:
-                    P[left].append(self._computeRule(rule))
+                if izquierda not in P:
+                    P[izquierda] = []
+                reglas = re.split('\|', item[1])
+                for regla in reglas:
+                    P[izquierda].append(self._calcularRegla(regla))
             else:
-                raise ImportError('Rigth simbol in production ' + row + ' is not in V')
+                raise ImportError('El símbolo derecho en la producción ' + fila + ' no está en V')
                 
-        for symbol in self._V:
-            if symbol not in v:
-            # Añadir símbolos no usados con una producción vacía
-                P[symbol] = [{}]
+        for simbolo in self._V:
+            if simbolo not in v:
+            # Agregar símbolos no utilizados con una producción vacía
+                P[simbolo] = [{}]
         return P
 
-    def _computeRule(self, rule):
-        """ Single Rule Builder"""
-        _rule = rule
-        rules = {}
+
+    """ Constructor de Regla Única: Analiza una regla y la almacena en una estructura de datos """
+    def _calcularRegla(self, regla):
+        _regla = regla
+        reglas = {}
         i = 0
-        while len(_rule) > 0:
-            r = re.search('|'.join(self.symbols), rule)
+        while len(_regla) > 0:
+            r = re.search('|'.join(self.simbolos), regla)
             if r.start() == 0:
-                rules[i] = re.escape(_rule[0:r.end()])
-                _rule = _rule[r.end():]
+                reglas[i] = re.escape(_regla[0:r.end()])
+                _regla = _regla[r.end():]
                 i += 1
             else:
-                raise ImportError('Error : undefined symbol find in production : ' + _rule)
-        return rules
+                raise ImportError('Error: se encontró un símbolo no definido en la producción: ' + _regla)
+        return reglas
 
+
+    """ Constructor de Copia: Crea una copia de la CFG actual """
     def __copy__(self):
-        """ Copy Costructor """
-        return CFG().create(self._V, self._SIGMA, self._S, self._P)
+        return CFG().crear(self._V, self._SIGMA, self._S, self._P)
 
-    def create(self, v, sigma, s, p):
-        """ Static Costructor """
-        newCFG = CFG()
-        newCFG._V = v
-        newCFG._SIGMA = sigma
-        newCFG._S = s
-        newCFG._P = p
-        return newCFG
 
+
+    """ Método para crear una CFG """
+    def crear(self, v, sigma, s, p):
+        nuevaCFG = CFG()
+        nuevaCFG._V = v
+        nuevaCFG._SIGMA = sigma
+        nuevaCFG._S = s
+        nuevaCFG._P = p
+        return nuevaCFG
+
+
+    """ Método para convertir la CFG en una cadena de texto legible """
     def __str__(self, order=False):
         _str = 'V: ' + ', '.join(self._V) + '\n'
         _str += 'SIGMA: ' + ', '.join(self._SIGMA) + '\n'
@@ -135,6 +146,7 @@ class CFG:
                 _PS.append(_p)
             _str += ' |'.join(_PS)
         return _str.replace('\\', '')
+
 
 class GenericNF(object):
     """ Generic Normal Form Class """
@@ -325,7 +337,7 @@ class ChomskyNF(GenericNF):
         
         
         
-        return CFG().create(self._V, self._SIGMA, self._S, self._P)
+        return CFG().crear(self._V, self._SIGMA, self._S, self._P)
 
 
     def _createVariable(self, S):
@@ -387,7 +399,7 @@ if __name__ == "__main__":
     G = CFG()
 
     print('\nTest : check normal form (gramatica.txt)')
-    G.loadFromFile('gramatica.txt')
+    G.cargarDesdeArchivo('gramatica.txt')
     result = ChomskyNF().isInNF(G)
     print(G)
 
