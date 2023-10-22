@@ -1,9 +1,16 @@
-V: E,A,T,B,F
-SIGMA: +,*,id,(,),#
+V: A, B, F, E, T, O, G, Q, M, K, L, R
+SIGMA: +, *, id, (, )
 S: E
 P:
-	E -> T A,
-	A -> + T A | #,
-	T -> F B,
-	B -> * F A | #,
-	F -> ( E ) | id
+        A -> M T | M O,
+        B -> K F | K G,
+        F -> id | L Q,
+        E -> id | F B | T A | L Q,
+        T -> id | F B | L Q,
+        O -> T A,
+        G -> F A,
+        Q -> E R,
+        M -> +,
+        K -> *,
+        L -> (,
+        R -> )

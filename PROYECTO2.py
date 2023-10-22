@@ -13,6 +13,7 @@ El programa toma como entrada un archivo con una CFG y el proposito es convertir
 import re
 import sys
 from itertools import product
+import numpy as np
 
 class CFG:    
     # Variables - Símbolos No Terminales
@@ -46,6 +47,7 @@ class CFG:
         p = re.search('P:(.*)', g).group(1)
         self.cargar(v, sigma, s, p)
 
+            
 
     """ Constructor Desde Cadenas: Carga una CFG desde cadenas de texto """
     def cargar(self, v, sigma, s, p):
@@ -398,6 +400,93 @@ class ChomskyFN(Simplificacion):
                 _P[v].append(_p)
         self._P = _P
 
+## validacion de cadenas con CYK
+## se utiliza la gramatica en forma normal de chomsky
+# se utiliza el algoritmo CYK para validar la cadena
+
+class CYK:
+    def __init__(self, grammar):
+        self.grammar = grammar
+        self._V = self.grammar._V
+        self._SIGMA = self.grammar._SIGMA
+        self._S = self.grammar._S
+        self._P = self.grammar._P
+        self._preprocesar_gramatica()
+    
+    def _preprocesar_gramatica(self):
+
+        for v in self.grammar._P:
+            for prod in self.grammar._P[v]:
+                for i, s in prod.items():
+                    if s in self.grammar._SIGMA:
+                        # Quitar escapes
+                        prod[i] = s.replace('\\', '')
+
+        self.grammar._SIGMA = [s.replace('\\', '') for s in self.grammar._SIGMA]
+
+    def validate(self, cadena):
+        cadena = cadena.split(' ')
+        n = len(cadena)
+        P = self._P
+        V = self._V
+        S = self._S
+        SIGMA = self._SIGMA
+        M = np.empty((n, n), dtype=list)
+
+        ##Llenar diagonal dentro de la matriz
+        for i in range(n):
+            for v in V:
+                if {0: cadena[i]} in P[v]:
+                    M[i, i] = [v] if M[i, i] is None else M[i, i] + [v]
+
+        ##Limprimir diagonal en la tabla 
+        print('\nTabla CYK')
+        for i in range(n):
+            for j in range(n):
+                print(M[i, j], end='\t')
+            print()
+
+        ##Llenar el resto de la matriz
+        for l in range(1, n):
+            for i in range(n - l):
+                j = i + l
+                for k in range(i, j):
+                    for v in V:
+                        for p in P[v]:
+                            if len(p) == 2:
+                                #imprimir match de natriz 
+                                print('M[', i, ',', k, ']', sep='', end='')
+                                print(' = ', M[i, k], sep='', end='')
+                                print(' & M[', k + 1, ',', j, ']', sep='', end='')
+                                print(' = ', M[k + 1, j], sep='', end='')
+                                print(' & ', p, sep='', end='')
+                                print(' = ', v, sep='')
+                                #
+                                #argument of type 'NoneType' is not iterable
+                                if M[i, k] is None or M[k + 1, j] is None:
+                                    continue
+                                if p[0] in M[i, k] and p[1] in M[k + 1, j]:
+                                    M[i, j] = [v] if M[i, j] is None else M[i, j] + [v]
+
+
+        ## imprimir tabla
+        print('\nTabla CYK')
+        for i in range(n):
+            for j in range(n):
+                print(M[i, j], end='\t')
+            print()
+        
+
+        ##Validar si la cadena es aceptada
+        if  M[0, n - 1] is None:
+            return False
+        elif S in M[0, n - 1] :
+            return True
+        else:
+            return False
+
+
+
 if __name__ == "__main__":
     print("Forma Normal de Chomsky")
     G = CFG()
@@ -406,14 +495,11 @@ if __name__ == "__main__":
     resultado = ChomskyFN().FNC(G)
     print(G)
 
-    if resultado:
-        print('\nLa gramática está en Forma Normal de Chomsky')
-    else:
-        print('\nLa gramática no está en Forma Normal de Chomsky\n')
-        g = ChomskyFN().convertToNF(G)
-        print(g)
+    print("\nValidación de Cadenas")
+    c = CYK(G)
+    print(c.validate('id + id * id'))
+        
 
-        if ChomskyFN().FNC(g):
-            print('\nLa gramática ahora está en Forma Normal de Chomsky')
-        else:
-            print('\nLa gramática sigue sin estar en Forma Normal de Chomsky')
+
+
+
