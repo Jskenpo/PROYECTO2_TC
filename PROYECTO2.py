@@ -2,6 +2,7 @@ import re
 import sys
 from itertools import product
 import numpy as np
+import graphviz
 import time
 
 class CFG:    
@@ -437,13 +438,6 @@ class CYK:
                     for v in V:
                         for p in P[v]:
                             if len(p) == 2:
-                                #imprimir match de natriz 
-                                #print('M[', i, ',', k, ']', sep='', end='')
-                                #print(' = ', M[i, k], sep='', end='')
-                                #print(' & M[', k + 1, ',', j, ']', sep='', end='')
-                                #print(' = ', M[k + 1, j], sep='', end='')
-                                #print(' & ', p, sep='', end='')
-                                #print(' = ', v, sep='')
                                 if M[i, k] is None or M[k + 1, j] is None:
                                     continue
                                 if p[0] in M[i, k] and p[1] in M[k + 1, j]:
@@ -455,7 +449,7 @@ class CYK:
             for j in range(n):
                 print(M[i, j], end='\t')
             print()
-        
+
         ##Validar si la cadena es aceptada
         if  M[0, n - 1] is None:
             result = False
@@ -466,12 +460,63 @@ class CYK:
 
         ##Imprimir resultado
         if result:
-            print(f"\nLa cadena pertenece a la gramática y es acepta")
+            print(f"\nLa cadena pertenece a la gramática y es acepta.")
         else:
-            print(f"\nLa cadena no pertenece a la gramática y no es acepta")
+            print(f"\nLa cadena no pertenece a la gramática y no es acepta.")
 
         return result
 
+    def generate_parse_tree(self, cadena):
+        cadena = cadena.split(' ')
+        n = len(cadena)
+        P = self._P
+        V = self._V
+        S = self._S
+        T = self._T
+        M = np.empty((n, n), dtype=list)
+
+        ##Llenar diagonal dentro de la matriz
+        for i in range(n):
+            for v in V:
+                if {0: cadena[i]} in P[v]:
+                    M[i, i] = [v] if M[i, i] is None else M[i, i] + [v]
+
+        ##Llenar el resto de la matriz
+        for l in range(1, n):
+            for i in range(n - l):
+                j = i + l
+                for k in range(i, j):
+                    for v in V:
+                        for p in P[v]:
+                            if len(p) == 2:
+                                if M[i, k] is None or M[k + 1, j] is None:
+                                    continue
+                                if p[0] in M[i, k] and p[1] in M[k + 1, j]:
+                                    M[i, j] = [v] if M[i, j] is None else M[i, j] + [v]
+
+        # Asumiendo que la cadena es aceptada, genera el parse tree
+        if M[0, n - 1] is not None and S in M[0, n - 1]:
+            dot = graphviz.Digraph(format='png')
+
+            def generate_tree(i, j, v):
+                if i == j:
+                    dot.node(f'{i},{j}', label=f'{cadena[i]}')
+                else:
+                    dot.node(f'{i},{j}', label=v)
+                    for production in P[v]:
+                        if len(production) == 2:
+                            left_v, right_v = list(production.values())
+                            for k in range(i, j):
+                                if M[i, k] is not None and M[k + 1, j] is not None:
+                                    if left_v in M[i, k] and right_v in M[k + 1, j]:
+                                        generate_tree(i, k, left_v)
+                                        generate_tree(k + 1, j, right_v)
+                                        dot.edge(f'{i},{j}', f'{i},{k}')
+                                        dot.edge(f'{i},{j}', f'{k + 1},{j}')
+            
+            generate_tree(0, n - 1, S)
+            dot.render('parse_tree', view=True)
+    
 
 if __name__ == "__main__":
     print("Algoritmo de simplificación de gramáticas y algoritmo CYK\n")
@@ -497,9 +542,10 @@ if __name__ == "__main__":
     print(resultado)
 
     print("\nValidación de Cadenas:")
-    start_time = time.time()
+    inicio = time.time()
     c = CYK(resultado)
     print(c.validate(expresion))
-    end_time = time.time()
+    c.generate_parse_tree(expresion)
+    fin = time.time()
 
-    print("\nTiempo de ejecución: ", end_time - start_time, "segundos")
+    print("\nTiempo de ejecución: ", fin - inicio, "segundos")
