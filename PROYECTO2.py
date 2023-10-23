@@ -337,9 +337,9 @@ class ChomskyFN(Simplificacion):
         self._cargarCFG(cfg)
         self._reducirCFG()
         self._produccionesEpsilon()
-        self._produccionesUnarias()
+        self._replaceMixedTerminals()
         self._dividirSecuenciasNT()
-        self._remplazarTerminales()
+        self._produccionesUnarias()
         
         return CFG().crear(self._V, self._SIGMA, self._S, self._P)
 
@@ -381,24 +381,36 @@ class ChomskyFN(Simplificacion):
         self._P = _P
     
     #Reemplaza los símbolos terminales en las producciones
-    def _remplazarTerminales(self):
+    def _replaceMixedTerminals(self):
         _P = {}
-        nuevasProds = {}
+        _wrongPs = {}
         for v, Ps in self._P.items():
             _P[v] = []
             for p in Ps:
+                if len(p) > 1 and len([x for x in p.values() if x in self._SIGMA]) > 0:
+                    if v not in _wrongPs.keys():
+                        _wrongPs[v] = []
+                    _wrongPs[v].append(p)
+                else:
+                    _P[v].append(p)
+        _conv = {}
+        for v, Ps in _wrongPs.items():
+            for p in Ps:
+                for s in list(set([y for y in [x for x in p.values() if x in self._SIGMA] if y not in _conv.keys()])):
+                    _v = self._crearVariable(v[0])
+                    self._V.append(_v)
+                    _conv[s] = _v
+                    _P[_v] = [{0: s}]
                 _p = {}
                 for j, s in p.items():
                     if s in self._SIGMA:
-                        if s not in nuevasProds.keys():
-                            nuevasProds[s] = self._crearVariable(s)
-                            self._V.append(nuevasProds[s])
-                            _P[nuevasProds[s]] = [{0: s}]
-                        _p[j] = nuevasProds[s]
+                        _p[j] = _conv[s]
                     else:
                         _p[j] = s
                 _P[v].append(_p)
         self._P = _P
+
+
 
 ## validacion de cadenas con CYK
 ## se utiliza la gramatica en forma normal de chomsky
@@ -495,9 +507,16 @@ if __name__ == "__main__":
     resultado = ChomskyFN().FNC(G)
     print(G)
 
+    ## forma normal de chomsky 
+    print("\nForma Normal de Chomsky")
+    G = CFG()
+    G.cargarDesdeArchivo('gramatica.txt')
+    resultado = ChomskyFN().convertToNF(G)
+    print(resultado)
+
     print("\nValidación de Cadenas")
-    c = CYK(G)
-    print(c.validate('id + id * id'))
+    c = CYK(resultado)
+    print(c.validate('id + id'))
         
 
 
