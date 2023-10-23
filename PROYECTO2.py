@@ -1,60 +1,46 @@
-'''
-PROYECTO 2 - TEORÍA DE LA COMPUTACIÓN
-INTEGRANTES:
-JOSE SANTISTEBAN
-SEBASTIÁN SOLORZANO
-MANUEL RODAS 
-
-DESCRIPCIÓN:
-El programa toma como entrada un archivo con una CFG y el proposito es convertira a la forma normal de chomsky y validar la gramática
-
-'''
-
 import re
 import sys
 from itertools import product
 import numpy as np
+import time
 
 class CFG:    
     # Variables - Símbolos No Terminales
     _V = []
     # Alfabeto - Símbolos Terminales
-    _SIGMA = []
+    _T = []
     # Símbolo de Inicio
     _S = None
     # Producciones
     _P = []
     # Variables Aceptadas - Símbolos No Terminales - Expresión Regular
-    _V_set = '[A-Z](_[0-9]*)?(,[A-Z](_[0-9]*)?)*'
+    _V_set = '[A-Z](_[0-9]*)?|(,[A-Z](_[0-9]*)?)*'
     # Alfabeto Aceptado - Símbolos Terminales - Expresión Regular
-    _SIGMA_set = '.*(,.*)*'
+    _T_set = '.*(,.*)*'
     # Símbolo de Inicio Aceptado - Expresión Regular
     _S_set = '[A-Z](_[0-9]*)?'
     # Producciones Aceptadas - Expresión Regular
     _P_set = '([A-Z](_[0-9]*)?->.*(|.*)*(,[A-Z](_[0-9]*)?->.*(|.*)*)*)'
 
-
-    """ Constructor Desde Archivo: Carga una CFG desde un archivo de texto """
+    #Carga una CFG desde un archivo de texto
     def cargarDesdeArchivo(self, archivoTexto):
         with open(archivoTexto) as f:
             lineas = f.readlines()
         g = ''.join([re.sub(" |\n|\t", "", x) for x in lineas])
-        if not re.search('V:' + self._V_set + 'SIGMA:' + self._SIGMA_set + 'S:' + self._S_set + 'P:' + self._P_set, g):
+        if not re.search('V:' + self._V_set + 'T:' + self._T_set + 'S:' + self._S_set + 'P:' + self._P_set, g):
             raise ImportError('Error: definición incorrecta de la gramática.')
-        v = re.search('V:(.*)SIGMA:', g).group(1)
-        sigma = re.search('SIGMA:(.*)S:', g).group(1)
+        v = re.search('V:(.*)T:', g).group(1)
+        t = re.search('T:(.*)S:', g).group(1)
         s = re.search('S:(.*)P:', g).group(1)
         p = re.search('P:(.*)', g).group(1)
-        self.cargar(v, sigma, s, p)
+        self.cargar(v, t, s, p)
 
-            
-
-    """ Constructor Desde Cadenas: Carga una CFG desde cadenas de texto """
-    def cargar(self, v, sigma, s, p):
+    #Carga una CFG desde cadenas de texto
+    def cargar(self, v, t, s, p):
         self._V = [re.escape(x) for x in re.split(',', v.replace(" ", ""))]
-        self._SIGMA = [re.escape(x) for x in re.split(',', sigma.replace(" ", ""))]
-        if [x for x in self._V if x in self._SIGMA]:
-            sys.exit('Error: la intersección entre V y SIGMA no está vacía')
+        self._T = [re.escape(x) for x in re.split(',', t.replace(" ", ""))]
+        if [x for x in self._V if x in self._T]:
+            sys.exit('Error: la intersección entre V y T no está vacía')
         s = re.escape(s.replace(" ", ""))
         if s in self._V:
             self._S = s
@@ -63,12 +49,11 @@ class CFG:
         p = p.replace(" ", "")
         self._P = self._parsProductions(p)
 
-
-    """ Constructor de Producciones: Analiza las producciones y las almacena en una estructura de datos """
+    #Analiza las producciones y las almacena en una estructura de datos
     def _parsProductions(self, p):
         P = {}
         v = []
-        self.simbolos = self._V + self._SIGMA
+        self.simbolos = self._V + self._T
         filas = re.split(',', p)
         for fila in filas:
             item = re.split('->', fila)
@@ -90,8 +75,7 @@ class CFG:
                 P[simbolo] = [{}]
         return P
 
-
-    """ Constructor de Regla Única: Analiza una regla y la almacena en una estructura de datos """
+    #Analiza una regla y la almacena en una estructura de datos
     def _calcularRegla(self, regla):
         _regla = regla
         reglas = {}
@@ -107,26 +91,23 @@ class CFG:
         return reglas
 
 
-    """ Constructor de Copia: Crea una copia de la CFG actual """
+    #Crea una copia de la CFG actual
     def __copy__(self):
-        return CFG().crear(self._V, self._SIGMA, self._S, self._P)
+        return CFG().crear(self._V, self._T, self._S, self._P)
 
-
-
-    """ Método para crear una CFG """
-    def crear(self, v, sigma, s, p):
+    #Método para crear una CFG
+    def crear(self, v, t, s, p):
         nuevaCFG = CFG()
         nuevaCFG._V = v
-        nuevaCFG._SIGMA = sigma
+        nuevaCFG._T = t
         nuevaCFG._S = s
         nuevaCFG._P = p
         return nuevaCFG
 
-
-    """ Método para convertir la CFG en una cadena de texto legible """
+    #Método para convertir la CFG en una cadena de texto legible
     def __str__(self, order=False):
         _str = 'V: ' + ', '.join(self._V) + '\n'
-        _str += 'SIGMA: ' + ', '.join(self._SIGMA) + '\n'
+        _str += 'T: ' + ', '.join(self._T) + '\n'
         _str += 'S: ' + self._S + '\n'
         _str += 'P:'
         if order:
@@ -146,7 +127,6 @@ class CFG:
 
 
 class Simplificacion(object):
-    """ Simplificación de gramática """
     #Verificar si una gramática está en una forma normal
     def _FN(self, CFG):
         pass
@@ -158,7 +138,7 @@ class Simplificacion(object):
     #Cargar una gramática CFG en la instancia de la clase
     def _cargarCFG(self, cfg):
         self._V = [x for x in cfg._V]
-        self._SIGMA = [x for x in cfg._SIGMA]
+        self._T = [x for x in cfg._T]
         self._S = cfg._S
         self._P = {}
         for v, p in cfg._P.items():
@@ -176,19 +156,19 @@ class Simplificacion(object):
         self._produccionesUnarias()
         self._reducirCFG()
                 
-        return CFG().crear(self._V, self._SIGMA, self._S, self._P)
+        return CFG().crear(self._V, self._T, self._S, self._P)
 
     #Eliminar producciones epsilon de una gramática CFG
     def _produccionesEpsilon(self):
-        if re.escape('#') not in self._SIGMA:
+        if re.escape('epsilon') not in self._T:
             return
-        self._SIGMA = [x for x in self._SIGMA if x is not re.escape('#')]
+        self._T = [x for x in self._T if x is not re.escape('epsilon')]
         _P = {}
         for v in self._V:
             if v not in _P.keys():
                 _P[v] = []
             for p in self._P[v]:
-                if len(p) == 1 and p[0] == re.escape('#'):
+                if len(p) == 1 and p[0] == re.escape('epsilon'):
                     nuevasProducciones = self._crearProducciones(v)
                     for _v, _p in nuevasProducciones.items():
                         if _v not in _P.keys():
@@ -252,7 +232,7 @@ class Simplificacion(object):
     def _encontrarTerminales(self, parent, son):
         T = []
         for p in self._P[son]:
-            if len(p) > 1 or p[0] in self._SIGMA:
+            if len(p) > 1 or p[0] in self._T:
                 T = [x for x in [p] if x not in T] + T
             elif p[0] != parent:
                 T = [x for x in self._encontrarTerminales(parent, p[0]) if x not in T] + T
@@ -261,7 +241,7 @@ class Simplificacion(object):
     #Reducir la gramática eliminando símbolos no alcanzables
     def _reducirCFG(self):
         W = {}
-        W[0] = self._actW(self._SIGMA)
+        W[0] = self._actW(self._T)
         i = 1
         W[i] = self._actW(W[i - 1], W[i - 1])
         while (W[i] != W[i - 1]):
@@ -272,7 +252,7 @@ class Simplificacion(object):
         for v in V:
             _P[v] = []
             for _p in self._P[v]:
-                if [True for x in range(len(_p))] == [x in V + self._SIGMA for n, x in _p.items()]:
+                if [True for x in range(len(_p))] == [x in V + self._T for n, x in _p.items()]:
                     _P[v].append(_p)
         self._P = _P
         Y = {}
@@ -283,12 +263,12 @@ class Simplificacion(object):
             j += 1
             Y[j] = self._propagarProduccion(Y[j - 1], Y[j - 2])
         self._V = [x for x in V if x in Y[j]]
-        self._SIGMA = [x for x in self._SIGMA if x in Y[j]]
+        self._T = [x for x in self._T if x in Y[j]]
 
     #Propagar producciones de una gramática CFG y encontrar símbolos alcanzables
     def _propagarProduccion(self, Y, _prev=None):
         _y = [x for x in Y]
-        y = [x for x in Y if x not in self._SIGMA]
+        y = [x for x in Y if x not in self._T]
         if _prev is not None:
             y = [x for x in y if x not in _prev]
         for v in y:
@@ -313,13 +293,11 @@ class Simplificacion(object):
 
 
 class ChomskyFN(Simplificacion):
-    """ Clase de Forma Normal de Chomsky """
-
     _simbolos_generados = {}
 
     #Verifica si la gramática está en Forma Normal de Chomsky
     def FNC(self, cfg):
-        if re.escape('#') in cfg._SIGMA:
+        if re.escape('epsilon') in cfg._T:
             return False
         else:
             for v, PS in cfg._P.items():
@@ -341,7 +319,7 @@ class ChomskyFN(Simplificacion):
         self._dividirSecuenciasNT()
         self._produccionesUnarias()
         
-        return CFG().crear(self._V, self._SIGMA, self._S, self._P)
+        return CFG().crear(self._V, self._T, self._S, self._P)
 
     #Crea una nueva variable única
     def _crearVariable(self, S):
@@ -387,7 +365,7 @@ class ChomskyFN(Simplificacion):
         for v, Ps in self._P.items():
             _P[v] = []
             for p in Ps:
-                if len(p) > 1 and len([x for x in p.values() if x in self._SIGMA]) > 0:
+                if len(p) > 1 and len([x for x in p.values() if x in self._T]) > 0:
                     if v not in _wrongPs.keys():
                         _wrongPs[v] = []
                     _wrongPs[v].append(p)
@@ -396,14 +374,14 @@ class ChomskyFN(Simplificacion):
         _conv = {}
         for v, Ps in _wrongPs.items():
             for p in Ps:
-                for s in list(set([y for y in [x for x in p.values() if x in self._SIGMA] if y not in _conv.keys()])):
+                for s in list(set([y for y in [x for x in p.values() if x in self._T] if y not in _conv.keys()])):
                     _v = self._crearVariable(v[0])
                     self._V.append(_v)
                     _conv[s] = _v
                     _P[_v] = [{0: s}]
                 _p = {}
                 for j, s in p.items():
-                    if s in self._SIGMA:
+                    if s in self._T:
                         _p[j] = _conv[s]
                     else:
                         _p[j] = s
@@ -411,30 +389,23 @@ class ChomskyFN(Simplificacion):
         self._P = _P
 
 
-
-## validacion de cadenas con CYK
-## se utiliza la gramatica en forma normal de chomsky
-# se utiliza el algoritmo CYK para validar la cadena
-
 class CYK:
     def __init__(self, grammar):
         self.grammar = grammar
         self._V = self.grammar._V
-        self._SIGMA = self.grammar._SIGMA
+        self._T = self.grammar._T
         self._S = self.grammar._S
         self._P = self.grammar._P
         self._preprocesar_gramatica()
     
     def _preprocesar_gramatica(self):
-
         for v in self.grammar._P:
             for prod in self.grammar._P[v]:
                 for i, s in prod.items():
-                    if s in self.grammar._SIGMA:
+                    if s in self.grammar._T:
                         # Quitar escapes
                         prod[i] = s.replace('\\', '')
-
-        self.grammar._SIGMA = [s.replace('\\', '') for s in self.grammar._SIGMA]
+        self.grammar._T = [s.replace('\\', '') for s in self.grammar._T]
 
     def validate(self, cadena):
         cadena = cadena.split(' ')
@@ -442,7 +413,7 @@ class CYK:
         P = self._P
         V = self._V
         S = self._S
-        SIGMA = self._SIGMA
+        T = self._T
         M = np.empty((n, n), dtype=list)
 
         ##Llenar diagonal dentro de la matriz
@@ -452,7 +423,7 @@ class CYK:
                     M[i, i] = [v] if M[i, i] is None else M[i, i] + [v]
 
         ##Limprimir diagonal en la tabla 
-        print('\nTabla CYK')
+        print('Tabla CYK')
         for i in range(n):
             for j in range(n):
                 print(M[i, j], end='\t')
@@ -467,19 +438,16 @@ class CYK:
                         for p in P[v]:
                             if len(p) == 2:
                                 #imprimir match de natriz 
-                                print('M[', i, ',', k, ']', sep='', end='')
-                                print(' = ', M[i, k], sep='', end='')
-                                print(' & M[', k + 1, ',', j, ']', sep='', end='')
-                                print(' = ', M[k + 1, j], sep='', end='')
-                                print(' & ', p, sep='', end='')
-                                print(' = ', v, sep='')
-                                #
-                                #argument of type 'NoneType' is not iterable
+                                #print('M[', i, ',', k, ']', sep='', end='')
+                                #print(' = ', M[i, k], sep='', end='')
+                                #print(' & M[', k + 1, ',', j, ']', sep='', end='')
+                                #print(' = ', M[k + 1, j], sep='', end='')
+                                #print(' & ', p, sep='', end='')
+                                #print(' = ', v, sep='')
                                 if M[i, k] is None or M[k + 1, j] is None:
                                     continue
                                 if p[0] in M[i, k] and p[1] in M[k + 1, j]:
                                     M[i, j] = [v] if M[i, j] is None else M[i, j] + [v]
-
 
         ## imprimir tabla
         print('\nTabla CYK')
@@ -488,37 +456,50 @@ class CYK:
                 print(M[i, j], end='\t')
             print()
         
-
         ##Validar si la cadena es aceptada
         if  M[0, n - 1] is None:
-            return False
+            result = False
         elif S in M[0, n - 1] :
-            return True
+            result = True
         else:
-            return False
+            result = False
 
+        ##Imprimir resultado
+        if result:
+            print(f"\nLa cadena pertenece a la gramática y es acepta")
+        else:
+            print(f"\nLa cadena no pertenece a la gramática y no es acepta")
+
+        return result
 
 
 if __name__ == "__main__":
-    print("Forma Normal de Chomsky")
+    print("Algoritmo de simplificación de gramáticas y algoritmo CYK\n")
     G = CFG()
+    expresion = 'id + ( id ) * id'
+    #expresion = 'the cat drinks the beer'
+    #expresion = 'she eats'
 
     G.cargarDesdeArchivo('gramatica.txt')
+    #G.cargarDesdeArchivo('gramatica2.txt')
+    #G.cargarDesdeArchivo('gramatica3.txt')
     resultado = ChomskyFN().FNC(G)
+    print("Gramática original:")
     print(G)
 
-    ## forma normal de chomsky 
-    print("\nForma Normal de Chomsky")
+    ## Forma normal de chomsky
+    print("\nNueva Gramática en Forma Normal de Chomsky:")
     G = CFG()
     G.cargarDesdeArchivo('gramatica.txt')
+    #G.cargarDesdeArchivo('gramatica2.txt')
+    #G.cargarDesdeArchivo('gramatica3.txt')
     resultado = ChomskyFN().convertToNF(G)
     print(resultado)
 
-    print("\nValidación de Cadenas")
+    print("\nValidación de Cadenas:")
+    start_time = time.time()
     c = CYK(resultado)
-    print(c.validate('id + id'))
-        
+    print(c.validate(expresion))
+    end_time = time.time()
 
-
-
-
+    print("\nTiempo de ejecución: ", end_time - start_time, "segundos")
