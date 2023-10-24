@@ -128,14 +128,6 @@ class CFG:
 
 
 class Simplificacion(object):
-    #Verificar si una gramática está en una forma normal
-    def _FN(self, CFG):
-        pass
-
-    #Convertir una gramática a una forma normal
-    def _convertirFN(self, CFG):
-        pass
-
     #Cargar una gramática CFG en la instancia de la clase
     def _cargarCFG(self, cfg):
         self._V = [x for x in cfg._V]
