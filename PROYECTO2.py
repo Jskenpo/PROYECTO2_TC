@@ -316,7 +316,7 @@ class ChomskyFN(Simplificacion):
         self._cargarCFG(cfg)
         self._reducirCFG()
         self._produccionesEpsilon()
-        self._replaceMixedTerminals()
+        self._reemplazarTerminales()
         self._dividirSecuenciasNT()
         self._produccionesUnarias()
         
@@ -360,20 +360,20 @@ class ChomskyFN(Simplificacion):
         self._P = _P
     
     #Reemplaza los símbolos terminales en las producciones
-    def _replaceMixedTerminals(self):
+    def _reemplazarTerminales(self):
         _P = {}
-        _wrongPs = {}
+        _produccionErronea = {}
         for v, Ps in self._P.items():
             _P[v] = []
             for p in Ps:
                 if len(p) > 1 and len([x for x in p.values() if x in self._T]) > 0:
-                    if v not in _wrongPs.keys():
-                        _wrongPs[v] = []
-                    _wrongPs[v].append(p)
+                    if v not in _produccionErronea.keys():
+                        _produccionErronea[v] = []
+                    _produccionErronea[v].append(p)
                 else:
                     _P[v].append(p)
         _conv = {}
-        for v, Ps in _wrongPs.items():
+        for v, Ps in _produccionErronea.items():
             for p in Ps:
                 for s in list(set([y for y in [x for x in p.values() if x in self._T] if y not in _conv.keys()])):
                     _v = self._crearVariable(v[0])
